@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>知识闯关</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ===== 颜色变量 ===== */
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --gold:     #e3a84e;
+    --gold-dim: #9a6e28;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --correct:  #3fb950;
+    --wrong:    #f85149;
+    --radius:   16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    overflow-x: hidden;
+  }
+
+  /* 背景星点 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(227,168,78,.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,.15) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 80% 20%, rgba(227,168,78,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.1) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,.12) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 50%, rgba(227,168,78,.2) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+  }
+
+  /* ===== 通用卡片 ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    animation: fadeUp .4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== 开始页 ===== */
+  .start-icon {
+    font-size: 52px;
+    text-align: center;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .start-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 26px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--gold);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .start-sub {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .info-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .info-tag {
+    flex: 1;
+    background: rgba(227,168,78,.08);
+    border: 1px solid rgba(227,168,78,.2);
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .info-tag .num { font-size: 22px; font-weight: 700; color: var(--gold); }
+  .info-tag .label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ===== 按钮 ===== */
+  .btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform .1s, opacity .1s;
+  }
+  .btn:active { transform: scale(.97); opacity: .9; }
+  .btn-primary {
+    background: linear-gradient(135deg, #e3a84e, #c47c1a);
+    color: #1a0f00;
+    letter-spacing: .5px;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 10px;
+  }
+
+  /* ===== 进度条 ===== */
+  .progress-area { margin-bottom: 20px; }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .progress-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e3a84e, #f5c97a);
+    border-radius: 9px;
+    transition: width .4s ease;
+  }
+
+  /* ===== 题目 ===== */
+  .question-num {
+    font-size: 11px;
+    color: var(--gold-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .question-text {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 19px;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  /* ===== 选项 ===== */
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    text-align: left;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .option:active:not(:disabled) { transform: scale(.98); }
+  .option:not(:disabled):hover { border-color: var(--gold-dim); }
+  .option-label {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+  .option-text { font-size: 15px; color: var(--text); line-height: 1.4; }
+
+  .option.selected { border-color: var(--gold); background: rgba(227,168,78,.06); }
+  .option.selected .option-label { border-color: var(--gold); color: var(--gold); background: rgba(227,168,78,.15); }
+
+  .option.correct { border-color: var(--correct); background: rgba(63,185,80,.08); }
+  .option.correct .option-label { border-color: var(--correct); color: #fff; background: var(--correct); }
+
+  .option.wrong { border-color: var(--wrong); background: rgba(248,81,73,.08); }
+  .option.wrong .option-label { border-color: var(--wrong); color: #fff; background: var(--wrong); }
+
+  .option:disabled { cursor: default; }
+
+  /* ===== 反馈区域 ===== */
+  .feedback {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    animation: fadeUp .3s ease both;
+  }
+  .feedback.correct-fb { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3); color: #7ee787; }
+  .feedback.wrong-fb   { background: rgba(248,81,73,.1);  border: 1px solid rgba(248,81,73,.3);  color: #ff7b72; }
+  .feedback-title { font-weight: 500; margin-bottom: 4px; }
+  .feedback-body { color: var(--text); font-size: 13px; opacity: .85; }
+
+  /* ===== 下一题按钮 ===== */
+  .next-btn-wrap { margin-top: 20px; }
+
+  /* ===== 结果页 ===== */
+  .result-badge {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .result-badge.great { background: rgba(227,168,78,.15); border: 2px solid var(--gold); }
+  .result-badge.good  { background: rgba(63,185,80,.12);  border: 2px solid var(--correct); }
+  .result-badge.pass  { background: rgba(248,81,73,.12);  border: 2px solid var(--wrong); }
+
+  .result-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 22px; font-weight: 700;
+    text-align: center; color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .result-score {
+    text-align: center; font-size: 44px; font-weight: 700;
+    color: var(--text); margin: 16px 0 4px;
+  }
+  .result-score span { font-size: 18px; color: var(--muted); font-weight: 300; }
+  .result-sub { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+  .result-breakdown {
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+  .breakdown-row + .breakdown-row { border-top: 1px solid var(--border); }
+  .breakdown-row .q-text { color: var(--muted); flex: 1; padding-right: 12px; }
+  .breakdown-row .result-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .result-dot.c { background: rgba(63,185,80,.2); color: var(--correct); }
+  .result-dot.w { background: rgba(248,81,73,.2);  color: var(--wrong); }
+
+  /* ===== 屏幕切换 ===== */
+  .screen { display: none; }
+  .screen.active { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ① 开始页 -->
+  <div id="screen-start" class="screen active">
+    <div class="card">
+      <span class="start-icon">🔭</span>
+      <div class="start-title">知识闯关挑战</div>
+      <div class="start-sub">答对才能继续，你能全部通关吗？</div>
+      <div class="info-row">
+        <div class="info-tag">
+          <div class="num" id="total-count">5</div>
+          <div class="label">题目数</div>
+        </div>
+        <div class="info-tag">
+          <div class="num">单选</div>
+          <div class="label">题型</div>
+        </div>
+        <div class="info-tag">
+          <div class="num">闯关</div>
+          <div class="label">模式</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="startGame()">开始挑战 →</button>
+    </div>
+  </div>
+
+  <!-- ② 答题页 -->
+  <div id="screen-quiz" class="screen">
+    <div class="card">
+      <div class="progress-area">
+        <div class="progress-meta">
+          <span id="progress-text">第 1 题</span>
+          <span id="progress-frac">1 / 5</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill" style="width:20%"></div>
+        </div>
+      </div>
+
+      <div class="question-num" id="q-num">QUESTION 01</div>
+      <div class="question-text" id="q-text"></div>
+
+      <div class="options" id="options-list"></div>
+
+      <div id="feedback-area"></div>
+
+      <div class="next-btn-wrap" id="next-btn-wrap" style="display:none">
+        <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">下一题 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 结果页 -->
+  <div id="screen-result" class="screen">
+    <div class="card">
+      <div class="result-badge" id="result-badge">🏆</div>
+      <div class="result-title" id="result-title">完美通关！</div>
+      <div class="result-score" id="result-score">5 <span>/ 5</span></div>
+      <div class="result-sub" id="result-sub">答对率 100%</div>
+      <div class="result-breakdown" id="result-breakdown"></div>
+      <button class="btn btn-primary" onclick="restartGame()">再挑战一次</button>
+      <button class="btn btn-ghost" onclick="showStart()">返回首页</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================
+   ✏️  在这里修改你的题目！
+   每道题格式：
+   {
+     q:       "题目文字",
+     options: ["选项A", "选项B", "选项C", "选项D"],
+     answer:  0,          // 正确答案的下标（0=A, 1=B, 2=C, 3=D）
+     explain: "答题后显示的解析文字"
+   }
+===================================================== */
+const QUESTIONS = [
+  {
+    q: "地球上含量最多的元素是什么？",
+    options: ["氧", "硅", "铁", "铝"],
+    answer: 0,
+    explain: "氧元素约占地球质量的46%，广泛存在于岩石、矿物和水中，是地壳中含量最多的元素。"
+  },
+  {
+    q: "光在真空中的速度约为多少？",
+    options: ["30万千米/秒", "15万千米/秒", "3万千米/秒", "60万千米/秒"],
+    answer: 0,
+    explain: "光速约为299,792,458米/秒，通常取整为30万千米/秒，是宇宙中已知最快的速度。"
+  },
+  {
+    q: "DNA的双螺旋结构由谁发现？",
+    options: ["达尔文", "沃森和克里克", "孟德尔", "巴斯德"],
+    answer: 1,
+    explain: "1953年，詹姆斯·沃森与弗朗西斯·克里克发现了DNA双螺旋结构，这是20世纪最重大的科学发现之一，二人因此获得诺贝尔奖。"
+  },
+  {
+    q: "以下哪种气体是温室效应的主要来源？",
+    options: ["氧气", "氮气", "二氧化碳", "氦气"],
+    answer: 2,
+    explain: "二氧化碳（CO₂）是最主要的温室气体之一，大量燃烧化石燃料向大气排放CO₂，是全球变暖的重要原因。"
+  },
+  {
+    q: "人体中最大的器官是什么？",
+    options: ["肝脏", "肺", "皮肤", "大脑"],
+    answer: 2,
+    explain: "皮肤是人体最大的器官，成年人的皮肤面积约为1.5至2平方米，具有保护、体温调节、感觉等重要功能。"
+  }
+];
+/* ===================================================== */
+
+let current = 0;
+let score = 0;
+let results = [];
+const labels = ['A','B','C','D'];
+
+function $(id){ return document.getElementById(id); }
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $('screen-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function startGame(){
+  current = 0; score = 0; results = [];
+  $('total-count').textContent = QUESTIONS.length;
+  showScreen('quiz');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = QUESTIONS[current];
+  const total = QUESTIONS.length;
+
+  $('progress-text').textContent = `第 ${current+1} 题`;
+  $('progress-frac').textContent = `${current+1} / ${total}`;
+  $('progress-fill').style.width = ((current+1)/total*100)+'%';
+  $('q-num').textContent = 'QUESTION ' + String(current+1).padStart(2,'0');
+  $('q-text').textContent = q.q;
+  $('feedback-area').innerHTML = '';
+  $('next-btn-wrap').style.display = 'none';
+
+  const list = $('options-list');
+  list.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.innerHTML = `
+      <div class="option-label">${labels[i]}</div>
+      <div class="option-text">${opt}</div>
+    `;
+    btn.onclick = () => selectAnswer(i, btn);
+    list.appendChild(btn);
+  });
+}
+
+function selectAnswer(index, btn){
+  const q = QUESTIONS[current];
+  const opts = $('options-list').querySelectorAll('.option');
+
+  // 禁用所有选项
+  opts.forEach(o => o.disabled = true);
+
+  const isCorrect = (index === q.answer);
+
+  // 标记选中 & 正确答案
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect) opts[q.answer].classList.add('correct');
+
+  // 显示解析
+  const fb = document.createElement('div');
+  fb.className = 'feedback ' + (isCorrect ? 'correct-fb' : 'wrong-fb');
+  fb.innerHTML = `
+    <div class="feedback-title">${isCorrect ? '✓ 回答正确！' : '✗ 回答错误'}</div>
+    <div class="feedback-body">${q.explain}</div>
+  `;
+  $('feedback-area').appendChild(fb);
+
+  if(isCorrect) score++;
+  results.push({ q: q.q, correct: isCorrect });
+
+  // 显示下一步按钮
+  const wrap = $('next-btn-wrap');
+  const nextBtn = $('next-btn');
+  wrap.style.display = 'block';
+  if(current === QUESTIONS.length - 1){
+    nextBtn.textContent = '查看结果 →';
+  } else {
+    nextBtn.textContent = isCorrect ? '继续下一题 →' : '再想想… →';
+  }
+}
+
+function nextQuestion(){
+  const lastCorrect = results[results.length-1].correct;
+  if(!lastCorrect && current < QUESTIONS.length-1){
+    // 答错：留在当前题重试
+    renderQuestion();
+    return;
+  }
+  current++;
+  if(current >= QUESTIONS.length){
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResult(){
+  showScreen('result');
+  const total = QUESTIONS.length;
+  const pct = Math.round(score/total*100);
+
+  // 徽章
+  const badge = $('result-badge');
+  const title = $('result-title');
+  if(pct === 100){ badge.textContent='🏆'; badge.className='result-badge great'; title.textContent='完美通关！'; }
+  else if(pct >= 60){ badge.textContent='🎯'; badge.className='result-badge good'; title.textContent='表现不错！'; }
+  else { badge.textContent='📖'; badge.className='result-badge pass'; title.textContent='还需多学习哦'; }
+
+  $('result-score').innerHTML = `${score} <span>/ ${total}</span>`;
+  $('result-sub').textContent = `答对率 ${pct}%，共 ${total} 题`;
+
+  // 明细
+  const bd = $('result-breakdown');
+  bd.innerHTML = results.map(r => `
+    <div class="breakdown-row">
+      <div class="q-text">${r.q.length>20 ? r.q.slice(0,20)+'…' : r.q}</div>
+      <div class="result-dot ${r.correct?'c':'w'}">${r.correct?'✓':'✗'}</div>
+    </div>
+  `).join('');
+}
+
+function restartGame(){ startGame(); }
+function showStart(){ showScreen('start'); }
+
+// 初始化
+$('total-count').textContent = QUESTIONS.length;
+</script>
+</body>
+</html>
